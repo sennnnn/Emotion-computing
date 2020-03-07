@@ -1,0 +1,14 @@
+# folder
+
+# global
+.vscode/
+__pycache__/
+
+# local
+dataset/data/
+dataset/label/
+
+# file
+
+# global
+try.py
