@@ -5,10 +5,8 @@
 __pycache__/
 
 # local
-dataset/trainval/*/*.jpg
-dataset/trainval/*/*.txt
-dataset/test/*/*.jpg
-dataset/test/*/*.txt
+dataset/trainval/
+dataset/test/
 
 # file
 
