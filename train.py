@@ -1,6 +1,8 @@
+import os
 import tensorflow as tf
 
-from model import construct_network,res50
+from util import iflarger,ifsmaller,get_newest,dict_save,dict_load
+from model import construct_network,res50,frozen_graph,restore_from_pb,load_graph
 from loss_metric import MSE,r_coefficient
 
 class train(object):
@@ -11,18 +13,19 @@ class train(object):
         self.pb_path = pb_path
         self.ckpt_path = ckpt_path
         self.model = model_function
+        self.valid_log_metric_only_path = 'build/valid_metric_loss_only.log'
 
     def _train_graph_compose(self):
         if(self.pattern != "ckpt" and self.pattern != "pb"):
             print("The pattern must be ckpt or pb.")
             exit()
-         elif(self.pattern == "ckpt" or self.last_flag == 'False'):
+        elif(self.pattern == "ckpt" or self.last_flag == 'False'):
             with self.graph.as_default() as g:
                 # network input & output
                 x = tf.placeholder(tf.float32, [None, 224, 224, 3], name='data')
                 y = tf.placeholder(tf.float32, [None, 2], name='label')
-                keep_prob = tf.placeholder(tf.float32, name)
-                construct_network(self.model, keep_prob)
+                keep_prob = tf.placeholder(tf.float32, name='rate')
+                construct_network(x, self.model, keep_prob)
 
                 # learning rate relating things
                 lr_input = tf.placeholder(tf.float32, name='lr_input')
@@ -39,7 +42,7 @@ class train(object):
                 loss = MSE(predict, y)
                 loss_identity = tf.identity(loss, name='loss')
                 metric = r_coefficient(predict, y)
-                metric_identity = tf.identiry(metric, name='metric')
+                metric_identity = tf.identity(metric, name='metric')
 
                 self.loss = loss
                 self.metric = metric
@@ -86,10 +89,10 @@ class train(object):
     
     def _log_write(self, show_string=None, end=False):
         if(show_string == None):
-            if not os.path.exists("{}-{}/valid_detail.log".format(self.model_key, self.sequence_parttern)):
-                self.log_file = open("{}-{}/valid_detail.log".format(self.model_key, self.sequence_parttern), "w")
+            if not os.path.exists("build/valid_detail.log"):
+                self.log_file = open("build/valid_detail.log", "w")
             else:
-                self.log_file = open("{}-{}/valid_detail.log".format(self.model_key, self.sequence_parttern), "a")
+                self.log_file = open("build/valid_detail.log", "a")
         else:
             print(show_string)
             self.log_file.write(show_string + '\n')
@@ -127,6 +130,7 @@ class train(object):
             exit()
 
         return return_string
+
     def training(self, learning_rate, max_epoches, one_epoch_steps, start_epoch,\
                  train_generator, valid_generator, decay_patientce, valid_step, \
                  keep_prob, tf_config):
@@ -162,20 +166,20 @@ class train(object):
                 # 用来学习率衰减的指标
                 one_epoch_avg_loss = 0
                 one_epoch_avg_metric = 0
-                epochwise_train_generator = train_generator.epochwise_iter()
-                epochwise_valid_generator = valid_generator.epochwise_iter()
+                epochwise_train_generator = train_generator.epochwise_generator()
+                epochwise_valid_generator = valid_generator.epochwise_generator()
                 show_string = "epoch {}\ntrain dataset number:{} valid dataset number:{}"\
-                              .format(i+1, train_generator.slice_count, valid_generator.slice_count)
+                              .format(i+1, train_generator.count, valid_generator.count)
                 self._log_write(show_string=show_string)
                 for j in range(one_epoch_steps):
                     # one step
                     pic,va = next(epochwise_train_generator)
-                    feed_dict = {'data:0':pic, 'label:0':va}
+                    feed_dict = {'data:0':pic, 'label:0':va, 'rate:0':keep_prob}
                     # 三个输入，拿 T1 的作为标签
                     _ = sess.run(self.optimizer, feed_dict=feed_dict)
                     if((j+1)%valid_step == 0):
                         pic,va = next(epochwise_train_generator)
-                        feed_dict = {'data:0':pic, 'label:0':va}
+                        feed_dict = {'data:0':pic, 'label:0':va, 'rate:0':keep_prob}
                         los,met = sess.run([self.loss, self.metric], feed_dict=feed_dict)
                         # 保存每次 valid 的指标
                         self.valid_log_dict['stepwise']["loss"][i+1].append(los)
@@ -229,3 +233,6 @@ epoch_end epoch:{} epoch_avg_loss:{} epoch_avg_metric:{}\n"\
             saver.save(sess, "{}/best_model".format(self.ckpt_path))
             frozen_graph(sess,"{}/last.pb".format(self.pb_path))
             sess.close()
+
+if __name__ == "__main__":
+    pass

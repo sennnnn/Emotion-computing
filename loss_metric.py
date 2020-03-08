@@ -24,7 +24,7 @@ def r_coefficient(a, b, smooth=0.000001):
     """
     a_avg = tf.reduce_mean(a)
     b_avg = tf.reduce_mean(b)
-    numerator = tf.reduct_sum((a-a_avg)*(b-b_avg), keepdims=False)
-    denominator = tf.sqrt(tf.reduct_sum(tf.square(a-a_avg))*tf.reduct_sum(tf.square(b-b_avg)))
+    numerator = tf.reduce_sum((a-a_avg)*(b-b_avg), keepdims=False)
+    denominator = tf.sqrt(tf.reduce_sum(tf.square(a-a_avg))*tf.reduce_sum(tf.square(b-b_avg)))
 
     return (numerator + smooth)/(denominator + smooth)

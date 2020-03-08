@@ -270,12 +270,12 @@ def construct_network(input, model, rate=0.1):
     Return:
         None
     """
-    with tf.variable_score('network'):
+    with tf.variable_scope('network'):
         predict = model(input, rate=rate)
     
     predict = layers.dense(predict, 1, use_bias=True, name='regression_layer', \
                            kernel_regularizer=tf.contrib.layers.l2_regularizer(0.1))
-    predict = tf.identify(predict, name='predict')
+    predict = tf.identity(predict, name='predict')
 
 if __name__ == "__main__":
     pass

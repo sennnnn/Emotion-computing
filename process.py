@@ -1,6 +1,44 @@
+import os
 import cv2
 import random
 import numpy as np
+from arg_parser import arg_parser
+
+def args_process():
+
+    ret_dict = {}
+
+    a = arg_parser()
+
+    a.add_val('--task', 'train')
+
+    model_pattern_dict = {'ckpt':'ckpt', 'pb':'pb'}
+
+    a.add_map('--pattern', model_pattern_dict)
+
+    parse_dict = a()
+
+    training_metric_loss_only_log_path = os.path.join('build', 'valid_metric_loss_only.log')
+    start_epoch = 1
+    if(not os.path.exists(training_metric_loss_only_log_path)):
+        last = False
+    else:
+        try:
+            temp_dict = dict_load(training_metric_loss_only_log_path)
+            start_epoch = len(temp_dict['epochwise']['metric']) + 1
+            if(start_epoch == 0):
+                last = False
+            else:
+                last = True
+        except:
+            last = False
+
+    ret_dict['task'] = parse_dict['--task']
+    ret_dict['model_pattern'] = parse_dict['--pattern'] if('--pattern' in parse_dict.keys()) else None
+    ret_dict['last'] = last
+    ret_dict['start_epoch'] = start_epoch
+
+    return ret_dict
 
 def z_score(pic, smooth=0.000001):
     """
@@ -25,13 +63,6 @@ def slice_process(slice, input_shape):
 
     return slice
 
-def open_readlines(txt_path):
-    with open(txt_path, 'r') as f:
-        lines = f.readlines()
-        lines = [x.strip() for x in lines]
-
-        return lines
-
 def parse_va(txt_path):
     with open(txt_path, 'r') as f:
         lines = f.readlines()
@@ -41,11 +72,12 @@ def parse_va(txt_path):
         return va
 
 class train_generator():
-    def __init__(self, train_txt_path, input_shape, batch_size, ifrandom=True):
-        self.train_list = open_readlines(train_txt_path)
+    def __init__(self, train_list, input_shape, batch_size, ifrandom=True):
+        self.train_list = train_list
         self.input_shape = input_shape
         self.batch_size = batch_size
         self.ifrandom = ifrandom
+        self.count = len(train_list)
     
     def __iter__(self):
         if(self.ifrandom):
