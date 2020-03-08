@@ -12,3 +12,7 @@ dataset/test/
 
 # global
 try.py
+
+# local
+dataset/trainval.txt
+dataset/test.txt

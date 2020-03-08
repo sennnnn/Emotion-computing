@@ -93,7 +93,7 @@ def bottleB(input, filters):
 
     return input
 
-def downS(input, kernel_size, pattern='max'):
+def downS(input, kernel_size, pattern='max', filters=None):
     """
     Downsampling in order to concentrate the information containing in the input.
     The default pattern is maxPooling.
@@ -112,58 +112,58 @@ def downS(input, kernel_size, pattern='max'):
     elif(pattern == 'sto'):
         pass
     elif(pattern == 'con'):
-        filters = input.get_shape().as_list()[-1]
-        input = CBR(input, filters, kernel_size, strides=2)
+        filters = input.get_shape().as_list()[-1]*2 if filters == None else filters
+        input = CBR(input, filters, kernel_size=kernel_size, strides=2)
     else:
         input = layers.max_pooling2d(input, kernel_size, strides=2, padding='same')
 
     return input
 
-def res50(input, initial_channel=64, downsampling_pattern='max'):
+def res50(input, initial_channel=64, rate=0.1):
     """
     resnet 50 network architecture
     backbone
     Args:
         input:tensor that wait to be operated.
         initial_channel:the benchmark of the channels.
-        downsampling_pattern:the pattern of the downsampling.
     Return:
         input:the network output.
     """
     c = initial_channel
-    p = downsampling_pattern
     # conv1
     input = CBR(input, c, strides=2, kernel_size=7)
-    # conv2
-    i = i*1
-    input = downS(input, kernel_size=3, p)
-    for i in range(3):
-        input = bottleB(input, i)
-    # conv3
-    i = i*2
-    input = downS(input, kernel_size=3, p)
-    for i in range(4):
-        input = bottleB(input, i)
-    # conv4
-    i = i*2
-    input = downS(input, kernel_size=3, p)
-    for i in range(6):
-        input = bottleB(input, i)
-    # conv5
-    i = i*2
-    input = downS(input, kernel_size=3, p)
-    for i in range(3):
-        input = bottleB(input, i)
 
-    input = output_layer(input)
+    # conv2
+    c = c*1
+    input = downS(input, 3, 'max')
+    for i in range(3):
+        input = bottleB(input, c)
+    # conv3
+    c = c*2
+    input = downS(input, 3, 'con', c)
+    for i in range(4):
+        input = bottleB(input, c)
+    # conv4
+    c = c*2
+    input = downS(input, 3, 'con', c)
+    for i in range(6):
+        input = bottleB(input, c)
+    # conv5
+    c = c*2
+    input = downS(input, 3, 'con', c)
+    for i in range(3):
+        input = bottleB(input, c)
+
+    input = output_layer(input, rate)
 
     return input
 
-def output_layer(input):
+def output_layer(input, rate):
     """
     resnet output layer
     Args:
         input:tensor that need to be operated.
+        rate:dropout layer keep probability.
     Return:
         input:tensor that has been operated.
     """
@@ -171,5 +171,25 @@ def output_layer(input):
     input = layers.flatten(input)
     input = layers.dense(input, 1000, activation=tf.nn.softmax, use_bias=True,
                          kernel_regularizer=tf.contrib.layers.l2_regularizer(0.1))
-    
+    input = tf.nn.dropout(input, rate)
+
     return input
+
+def main(input, model, rate=0.1):
+    """
+    regression layer
+    Args:
+        input:the picture that wait to be processed.
+        model:the neural network model.
+        rate:the last layer dropout rate of the neural network model.
+    Return:
+        result:neural network regression result.
+    """
+    result = model(input, rate=rate)
+    result = layers.dense(result, 1, use_bias=True, \
+                          kernel_regularizer=tf.contrib.layers.l2_regularizer(0.1))
+
+    return result
+
+if __name__ == "__main__":
+    pass
