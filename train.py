@@ -186,7 +186,7 @@ class train(object):
                         self.valid_log_dict['stepwise']["metric"][i+1].append(met)
                         one_epoch_avg_loss += los
                         one_epoch_avg_metric += met
-                        show_string = "epoch:{} steps:{}/{} valid_loss:{} valid_dice:{} learning_rate:{}"\
+                        show_string = "epoch:{} steps:{}/{} valid_loss:{} valid_metric:{} learning_rate:{}"\
                                       .format(i+1, j+1, one_epoch_steps, los, met, learning_rate)
                         self._log_write(show_string=show_string)
 
