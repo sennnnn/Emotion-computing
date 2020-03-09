@@ -13,6 +13,7 @@ class train(object):
         self.pb_path = pb_path
         self.ckpt_path = ckpt_path
         self.model = model_function
+        self.initial_channel = initial_channel
         self.valid_log_metric_only_path = 'build/valid_metric_loss_only.log'
 
     def _train_graph_compose(self):
@@ -22,10 +23,10 @@ class train(object):
         elif(self.pattern == "ckpt" or self.last_flag == 'False'):
             with self.graph.as_default() as g:
                 # network input & output
-                x = tf.placeholder(tf.float32, [None, 224, 224, 3], name='data')
-                y = tf.placeholder(tf.float32, [None, 2], name='label')
+                x = tf.placeholder(tf.float32, [None, 448, 448, 3], name='data')
+                y = tf.placeholder(tf.float32, [None, 1], name='label')
                 keep_prob = tf.placeholder(tf.float32, name='rate')
-                construct_network(x, self.model, keep_prob)
+                construct_network(x, self.model, self.initial_channel, keep_prob)
 
                 # learning rate relating things
                 lr_input = tf.placeholder(tf.float32, name='lr_input')
@@ -39,9 +40,9 @@ class train(object):
                 # loss & metric & optimizer
                 predict = g.get_tensor_by_name('predict:0')
                 
-                loss = MSE(predict, y)
+                loss = tf.losses.mean_squared_error(y, predict)
                 loss_identity = tf.identity(loss, name='loss')
-                metric = r_coefficient(predict, y)
+                metric = r_coefficient(y, predict)
                 metric_identity = tf.identity(metric, name='metric')
 
                 self.loss = loss

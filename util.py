@@ -92,3 +92,9 @@ def train_valid_split(*args, valid_rate=0.2, ifrandom=True):
         ret_valid.append(valid_list)
     
     return tuple(ret_train + ret_valid)
+
+def write_graph_ops(txt_path, graph):
+    with open(txt_path, 'w') as f:
+        ops = graph.get_operations()
+        [f.write(x.__str__()+'\n') for x in ops]
+        f.close()

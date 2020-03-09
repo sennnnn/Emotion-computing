@@ -28,3 +28,17 @@ def r_coefficient(a, b, smooth=0.000001):
     denominator = tf.sqrt(tf.reduce_sum(tf.square(a-a_avg))*tf.reduce_sum(tf.square(b-b_avg)))
 
     return (numerator + smooth)/(denominator + smooth)
+
+if __name__ == "__main__":
+    a = tf.Variable([[1,2],[2,3]])
+    b = tf.Variable([[1,2],[2,3]])
+    a = tf.cast(a, tf.float32)
+    b = tf.cast(b, tf.float32)
+    op1 = MSE(a, b)
+    op2 = r_coefficient(a, b)
+    out = tf.tuple([op1, op2])
+    init = tf.global_variables_initializer()
+    with tf.Session() as sess:
+        sess.run(init)
+        result = sess.run(out)
+        print(result)

@@ -133,12 +133,12 @@ def res50(input, initial_channel=64, rate=0.1):
     c = initial_channel
     # conv1
     input = CBR(input, c, strides=2, kernel_size=7)
-
     # conv2
     c = c*1
     input = downS(input, 1, 'max')
     for i in range(3):
         input = bottleB(input, c)
+
     # conv3
     c = c*2
     input = downS(input, 1, 'con', c)
@@ -149,6 +149,7 @@ def res50(input, initial_channel=64, rate=0.1):
     input = downS(input, 1, 'con', c)
     for i in range(6):
         input = bottleB(input, c)
+
     # conv5
     c = c*2
     input = downS(input, 1, 'con', c)
@@ -170,8 +171,7 @@ def output_layer(input, rate):
     """
     input = layers.average_pooling2d(input, pool_size=7, strides=7, padding='same')
     input = layers.flatten(input)
-    input = layers.dense(input, 1000, activation=tf.nn.softmax, use_bias=True,
-                         kernel_regularizer=tf.contrib.layers.l2_regularizer(0.1))
+    input = layers.dense(input, 2048, activation=None, use_bias=True)
     input = tf.nn.dropout(input, rate)
 
     return input
@@ -260,7 +260,7 @@ def frozen_graph(sess, output_graph_path):
 #         input:the network output.
 #     """
 
-def construct_network(input, model, rate=0.1):
+def construct_network(input, model, initial_channel=64, rate=0.1):
     """
     regression layer
     Args:
@@ -271,10 +271,11 @@ def construct_network(input, model, rate=0.1):
         None
     """
     with tf.variable_scope('network'):
-        predict = model(input, rate=rate)
+        predict = model(input, initial_channel=initial_channel, rate=rate)
     
-    predict = layers.dense(predict, 1, use_bias=True, name='regression_layer', \
-                           kernel_regularizer=tf.contrib.layers.l2_regularizer(0.1))
+    predict = layers.dense(predict, 512, use_bias=True)
+    predict = layers.dense(predict, 512, use_bias=True)
+    predict = layers.dense(predict, 2, use_bias=True, name='regression_layer')
     predict = tf.identity(predict, name='predict')
 
 if __name__ == "__main__":
