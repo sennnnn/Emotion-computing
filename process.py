@@ -95,9 +95,9 @@ class train_generator():
             pic = slice_process(pic, self.input_shape)
             va = parse_va(txt_path)
             if(self.target == 'v'):
-                va = va[0]
+                va = [va[0]]
             elif(self.target == 'a'):
-                va = va[1]
+                va = [va[1]]
             else:
                 assert False, "The train target must be valence or arousal."
             data_batch_block.append(pic)

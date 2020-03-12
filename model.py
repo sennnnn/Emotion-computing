@@ -275,7 +275,7 @@ def construct_network(input, model, initial_channel=64, rate=0.1):
     
     predict = layers.dense(predict, 512, use_bias=True)
     predict = layers.dense(predict, 512, use_bias=True)
-    predict = layers.dense(predict, 2, use_bias=True, name='regression_layer')
+    predict = layers.dense(predict, 1, use_bias=True, name='regression_layer')
     predict = tf.identity(predict, name='predict')
 
 if __name__ == "__main__":
