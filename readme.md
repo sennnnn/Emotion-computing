@@ -15,8 +15,8 @@ model_2D.py:
 主要定义的是网络结构，目前有的网络结构是: VGG16, stacked-VGG16, Resnet-50, Densenet
 
 model_2D_block.py:
-主要定义的是网络中的模块，例如卷积模块，卷积加批正则加激活函数模块，残差模块，瓶颈残差模块，瓶颈模块，  
-Densenet 中的 transition block, dense block.
+主要定义的是网络中的模块，例如卷积模块，卷积加批正则加激活函数模块，残差模块，瓶颈残差模块，  
+瓶颈模块,Densenet 中的 transition block, dense block.
 
 model_3D.py:
 定义中...
