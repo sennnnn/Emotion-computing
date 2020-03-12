@@ -13,6 +13,7 @@ __pycache__/
 
 # global
 try.py
+*.zip
 
 # local
 dataset/trainval.txt

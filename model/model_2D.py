@@ -84,8 +84,11 @@ def VGG16(input, last_channel, initial_channel=64, rate=0.5, top=True):
     for i in range(2):
         input = CBR(input, c, kernel_size=3)
     input = CBR(input, c, kernel_size=1)
-
-    input = output_layer(input, rate, last_channel)
+    
+    if(top):
+        input = output_layer(input, rate, last_channel)
+    
+    input = tf.identity(input, name='output')
 
     return input
 
@@ -118,7 +121,7 @@ def densenet(input, last_channel, initial_channel=64, rate=0.5, top=True):
     input = transitionB(input)
     # Dense block 4
     input = dense_block(input, c, 32)
-    print(input)
+
     if(top):
         input = output_layer(input, rate, last_channel)
 
@@ -141,11 +144,19 @@ def output_layer(input, rate, output_units):
 
     return input
 
-def VGG16_stacked(input, initial_channel=64, rate=0.5):
+def VGG16_stacked(input, last_channel, initial_channel=64, rate=0.5, reuse=True):
+    if(reuse == True):
+        reuse = tf.AUTO_REUSE
+    else:
+        reuse = False
     out = []
     input_list = tf.unstack(input, axis=1)
     for single in input_list:
-        out.append(VGG16(single, top=True))
+        if(reuse == True):
+            with tf.variable_scope('VGG16', reuse=reuse):
+                out.append(VGG16(single, last_channel, top=True))
+        else:
+            out.append(VGG16(single, last_channel, top=True))
 
     out = tf.stack(out, axis=1)
 
@@ -181,10 +192,11 @@ def VGG16_LSTM(input, rnn_units,  RNN_layer=1):
     Return:
         input:the network output.
     """
+    input = VGG16_stacked(input, rnn_units)
     LSTM_cell = tf.nn.rnn_cell.BasicLSTMCell(rnn_units)
     LSTM_cell = tf.nn.rnn_cell.MultiRNNCell([LSTM_cell]*RNN_layer)
-    out,state = tf.nn.dynamic_rnn(LSTM_cell, input, dtype=tf.float32)
-    
+    predict,state = tf.nn.dynamic_rnn(LSTM_cell, input, dtype=tf.float32)
+
     predict = layers.dense(predict, 512, use_bias=True)
     predict = layers.dense(predict, 512, use_bias=True)
     predict = layers.dense(predict, 1, use_bias=True, name='regression_layer')
@@ -194,7 +206,58 @@ def VGG16_LSTM(input, rnn_units,  RNN_layer=1):
 
 if __name__ == "__main__":
     # test region
-    input = tf.placeholder(tf.float32, [None, 224, 224, 3])
-    # input = VGG16_stacked(input)
-    # input = VGG16(input)
-    print(densenet(input))
+    # examples for share VGG16-LSTM
+    # input = tf.placeholder(tf.float32, [None, 12, 224, 224, 3])
+
+    # input = VGG16_LSTM(input, 2048)
+    # print(input)
+
+    # examples for share stacked VGG16
+    # input = tf.placeholder(tf.float32, [None, 12, 224, 224, 3])
+    # with tf.variable_scope('network'):
+    #     input = VGG16_stacked(input, 2048, reuse=False)
+    
+    # print(len(tf.global_variables()))
+
+    # examples about how to share the weights.
+    # 如果使用 reuse=True 这种方法，那么想要 reuse=True 这种方式，必须要第一次
+    # 先定义了 variable 之后才能在第二次调用 variable 的时候开启 reuse=True
+    # input = tf.placeholder(tf.float32, [None, 224, 224, 3])
+    # v1 = None
+    # v2 = None
+    # with tf.variable_scope('VGG16'):
+    #     out1 = VGG16(input, 2048)
+    #     vas = tf.global_variables()
+    #     v1 = vas[-2]    
+
+    # with tf.variable_scope('VGG16', reuse=True):
+    #     out2 = VGG16(input, 2048)
+    #     vas = tf.global_variables()
+    #     v2 = vas[-2]
+
+    # init = tf.global_variables_initializer()
+    # with tf.Session() as sess:
+    #     sess.run(init)
+    #     v1,v2 = sess.run([v1, v2])
+    #     print(v1[200:208, 99], v2[200:208, 99])
+
+    # 而直接使用 reuse=tf.AUTO_REUSE 则不需要先定义一次这么麻烦。
+    # input = tf.placeholder(tf.float32, [None, 224, 224, 3])
+    # v1 = None
+    # v2 = None
+    # with tf.variable_scope('VGG16', reuse=tf.AUTO_REUSE):
+    #     out1 = VGG16(input, 2048)
+    #     vas = tf.global_variables()
+    #     v1 = vas[-2]    
+
+    # with tf.variable_scope('VGG16', reuse=tf.AUTO_REUSE):
+    #     out2 = VGG16(input, 2048)
+    #     vas = tf.global_variables()
+    #     v2 = vas[-2]
+
+    # init = tf.global_variables_initializer()
+    # with tf.Session() as sess:
+    #     sess.run(init)
+    #     v1,v2 = sess.run([v1, v2])
+    #     print(v1[200:208, 99], v2[200:208, 99])
+    pass
