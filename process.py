@@ -2,7 +2,7 @@ import os
 import cv2
 import random
 import numpy as np
-from arg_parser import arg_parser
+from util.arg_parser import arg_parser
 
 def args_process():
 

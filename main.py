@@ -3,8 +3,8 @@ import tensorflow as tf
 
 from train import train
 from process import train_generator,args_process
-from util import open_readlines,train_valid_split
-from model import res50
+from util.util import open_readlines,train_valid_split
+from model.model import res50
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True

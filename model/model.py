@@ -75,7 +75,7 @@ def resB(input, filters):
 
     return input
 
-def bottleB(input, filters):
+def bottle_resB(input, filters):
     """
     The second generation residual block.
     Args:
@@ -92,6 +92,35 @@ def bottleB(input, filters):
     input = tf.nn.leaky_relu(input, alpha=LEAKY_RELU, name='ac')
 
     return input
+
+def bottle_neckB(input, filters):
+    """
+    Densenet block
+    Args:
+        input:tensor that need to be operated.
+        filters:the benchmark of the channel number.
+    Return:
+        input:tensor that has been operated.
+    """
+    input = layers.batch_normalization(input, momentum=DECAY_BATCH_NORM, epsilon=EPSILON)
+    input = tf.nn.leaky_relu(input, alpha=LEAKY_RELU, name='ac')
+    input = C(input, filters, kernel_size=1)
+    input = layers.batch_normalization(input, momentum=DECAY_BATCH_NORM, epsilon=EPSILON)
+    input = tf.nn.leaky_relu(input, alpha=LEAKY_RELU, name='ac')
+    input = C(input, filters, kernel_size=3)
+
+    return input
+
+def transitionB(input, filters):
+    """
+    Densenet trainsition layer
+    Args:
+        input:tensor that need to be operated.
+        filters:the benchmark of the channel number.
+    Return:
+        input:tensor that has been operated.
+    """
+    input = 
 
 def downS(input, kernel_size, pattern='max', filters=None):
     """
@@ -119,7 +148,7 @@ def downS(input, kernel_size, pattern='max', filters=None):
 
     return input
 
-def res50(input, initial_channel=64, rate=0.1):
+def res50(input, initial_channel=64, rate=0.5, top=True):
     """
     resnet 50 network architecture
     backbone
@@ -144,6 +173,7 @@ def res50(input, initial_channel=64, rate=0.1):
     input = downS(input, 1, 'con', c)
     for i in range(4):
         input = bottleB(input, c)
+
     # conv4
     c = c*2
     input = downS(input, 1, 'con', c)
@@ -156,13 +186,64 @@ def res50(input, initial_channel=64, rate=0.1):
     for i in range(3):
         input = bottleB(input, c)
 
+    if(top):
+        input = output_layer(input, rate)
+
+    return input
+
+def VGG16(input, initial_channel=64, rate=0.5, top=True):
+    """
+    VGG16 network architecture
+    Args:
+        input:tensor that wait to be operated.
+        initial_channel:the benchmark of the channels.
+        rate:the dropout layer keep probability.
+    Return:
+        input:the network output.
+    """
+    c = initial_channel
+    for i in range(2):
+        input = CBR(input, c, kernel_size=3)
+    
+    input = downS(input, 3)
+    c = c*2
+    for i in range(2):
+        input = CBR(input, c, kernel_size=3)
+    
+    input = downS(input, 3)
+    c = c*2
+    for i in range(2):
+        input = CBR(input, c, kernel_size=3)
+    input = CBR(input, c, kernel_size=1)
+
+    input = downS(input, 3)
+    c = c*2
+    for i in range(2):
+        input = CBR(input, c, kernel_size=3)
+    input = CBR(input, c, kernel_size=1)
+    
+    input = downS(input, 3)
+    for i in range(2):
+        input = CBR(input, c, kernel_size=3)
+    input = CBR(input, c, kernel_size=1)
+
     input = output_layer(input, rate)
 
     return input
 
+def VGG16_stacked(input, initial_channel=64, rate=0.5):
+    out = []
+    input_list = tf.unstack(input, axis=1)
+    for single in input_list:
+        out.append(VGG16(single))
+
+    out = tf.stack(out, axis=1)
+
+    return out
+
 def output_layer(input, rate):
     """
-    resnet output layer
+    CNN output layer or feature extraction layer.
     Args:
         input:tensor that need to be operated.
         rate:dropout layer keep probability.
@@ -175,91 +256,7 @@ def output_layer(input, rate):
     input = tf.nn.dropout(input, rate)
 
     return input
-
-def restore_from_pb(sess, frozen_graph, meta_graph):
-    """
-    Ckpt restore from frozen model file.
-    Args:
-        sess:The Session that is connected with meta_graph.
-        frozen_graph:The graph which will be used to restore.
-        meta_graph:The graph which will be restored.
-    Return:
-        sess:The Session after processing.
-    """ 
-    # frozen_graph 与 meta_graph 应该是相互匹配的
-    ops = frozen_graph.get_operations()
-    ops_restore = [x.name.replace('/read','') for x in ops if('/read' in x.name)]
-    tensors_constant = [frozen_graph.get_tensor_by_name(x+':0') for x in ops_restore]
-    tensors_variables = [meta_graph.get_tensor_by_name(x+':0') for x in ops_restore]
-    do_list = []
-    sess_local = tf.Session(graph=frozen_graph)
-    with tf.variable_scope('frozen_save'):
-        for i in range(len(ops_restore)):
-            try:
-                temp = sess_local.run(tensors_constant[i])
-                op = tf.assign(tensors_variables[i], temp)
-                do_list.append(op)
-            except:
-                print('{} => {} error, frozen graph tensor name {} => meta graph tensor name {}'\
-                      .format(tensors_constant[i].get_shape(), tensors_variables[i].get_shape(), 
-                              tensors_constant[i].name, tensors_variables[i].name))
-                exit()
-        sess_local.close()
-        sess.run(do_list)
-
-    return sess
-
-def load_graph(graph_def_filename):
-    """
-    To get graph from graph_def file.
-    Args:
-        graph_def_filename:The graph_def file save path.
-    Return:
-        graph:The graph loaded from graph_def file.
-    """
-    with tf.gfile.GFile(graph_def_filename, "rb") as f:
-        graph_def = tf.GraphDef()
-        graph_def.ParseFromString(f.read())
-
-    with tf.Graph().as_default() as graph:
-        tf.import_graph_def(graph_def, name="")
-
-    print("load graph {} ...".format(graph_def_filename))
-
-    return graph
-
-def frozen_graph(sess, output_graph_path):
-    """
-    Extracting the sub graph of the current computing graph.
-    Args:
-        sess:The current session.
-        output_graph_path:The frozen graph file save path.
-    Return:
-        string:The saving information.
-    """
-    # 因为计算图上只有ops没有变量，所以要通过会话，来获取那些变量
-    output_graph_def = tf.graph_util.convert_variables_to_constants(sess, 
-                                                                   tf.get_default_graph().as_graph_def(),
-                                                                   ["predict"])
-
-    with open(output_graph_path, "wb") as f:
-        f.write(output_graph_def.SerializeToString())
-
-    return "{} ops written to {}.\n".format(len(output_graph_def.node), output_graph_path)
-
-
-# def densenet(input, initial_channel=64, rate=0.1):
-#     """
-#     resnet 50 network architecture
-#     backbone
-#     Args:
-#         input:tensor that wait to be operated.
-#         initial_channel:the benchmark of the channels.
-#         rate:the dropout layer keep probability.
-#     Return:
-#         input:the network output.
-#     """
-
+    
 def construct_network(input, model, initial_channel=64, rate=0.1):
     """
     regression layer
@@ -278,5 +275,22 @@ def construct_network(input, model, initial_channel=64, rate=0.1):
     predict = layers.dense(predict, 1, use_bias=True, name='regression_layer')
     predict = tf.identity(predict, name='predict')
 
+# def densenet(input, initial_channel=64, rate=0.1):
+#     """
+#     resnet 50 network architecture
+#     backbone
+#     Args:
+#         input:tensor that wait to be operated.
+#         initial_channel:the benchmark of the channels.
+#         rate:the dropout layer keep probability.
+#     Return:
+#         input:the network output.
+#     """
+
 if __name__ == "__main__":
-    pass
+    # test region
+    input = tf.placeholder(tf.float32, [None, 224, 224, 224, 3])
+    # input = VGG16_stacked(input)
+    # input = VGG16(input)
+    input = VGG16_3D(input, top=True)
+    print(input)

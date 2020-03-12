@@ -1,9 +1,10 @@
 import os
 import tensorflow as tf
 
-from util import iflarger,ifsmaller,get_newest,dict_save,dict_load
-from model import construct_network,res50,frozen_graph,restore_from_pb,load_graph
-from loss_metric import MSE,r_coefficient
+from util.util import iflarger,ifsmaller,get_newest,dict_save,dict_load
+from model.model import construct_network,res50
+from model.model_util import frozen_graph,restore_from_pb,load_graph
+from util.loss_metric import MSE,r_coefficient
 
 class train(object):
     def __init__(self, last, pattern, model_function, pb_path, ckpt_path, initial_channel):
