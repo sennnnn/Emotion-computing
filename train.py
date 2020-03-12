@@ -2,7 +2,7 @@ import os
 import tensorflow as tf
 
 from util.util import iflarger,ifsmaller,get_newest,dict_save,dict_load
-from model.model import construct_network,res50
+from model.model_old import construct_network,res50
 from model.model_util import frozen_graph,restore_from_pb,load_graph
 from util.loss_metric import MSE,r_coefficient
 

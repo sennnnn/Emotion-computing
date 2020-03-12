@@ -122,7 +122,7 @@ def transitionB(input):
     filters = input.get_shape().as_list()[-1]
     input = layers.batch_normalization(input, momentum=DECAY_BATCH_NORM, epsilon=EPSILON)
     input = C(input, filters, kernel_size=1)
-    input = layers.avg_pooling2d(input, 3, strides=2, padding='same')
+    input = layers.average_pooling2d(input, 3, strides=2, padding='same')
 
     return input
 
@@ -141,7 +141,7 @@ def downS(input, kernel_size, pattern='max', filters=None):
         input:tensor that has been operated.
     """
     if(pattern == 'avg'):
-        input = layers.avg_pooling2d(input, kernel_size, strides=2, padding='same')
+        input = layers.average_pooling2d(input, kernel_size, strides=2, padding='same')
     elif(pattern == 'sto'):
         pass
     elif(pattern == 'con'):
@@ -151,3 +151,25 @@ def downS(input, kernel_size, pattern='max', filters=None):
         input = layers.max_pooling2d(input, kernel_size, strides=2, padding='same')
 
     return input
+
+def dense_block(input, filters, recurrent_round):
+    """
+    Densenet main dense connect block
+    Args:
+        input:tensor that need to be accumalated.
+        filters:the benchmark of the channel number.
+        recurrent_round:the dense connect depth.
+    Return:
+        out:tensor that has been concentrated.
+    """
+    last_concat = []
+    for _ in range(recurrent_round):
+        last_concat.append(input)
+        input = tf.concat(last_concat, axis=-1)
+        print(input.get_shape().as_list())
+        input = bottle_neckB(input, filters)
+
+    return input
+
+if __name__ == "__main__":
+    pass
