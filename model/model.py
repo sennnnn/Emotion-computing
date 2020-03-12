@@ -111,16 +111,20 @@ def bottle_neckB(input, filters):
 
     return input
 
-def transitionB(input, filters):
+def transitionB(input):
     """
     Densenet trainsition layer
     Args:
         input:tensor that need to be operated.
-        filters:the benchmark of the channel number.
     Return:
         input:tensor that has been operated.
     """
-    input = 
+    filters = input.get_shape().as_list()[-1]
+    input = layers.batch_normalization(input, momentum=DECAY_BATCH_NORM, epsilon=EPSILON)
+    input = C(input, filters, kernel_size=1)
+    input = layers.avg_pooling2d(input, 3, strides=2, padding='same')
+
+    return input
 
 def downS(input, kernel_size, pattern='max', filters=None):
     """
