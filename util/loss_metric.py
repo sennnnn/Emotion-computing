@@ -1,4 +1,19 @@
 import tensorflow as tf
+import numpy as np
+
+def MSE_np(a, b):
+    result = np.square(a - b)
+    result = np.mean(result)
+
+    return result
+
+def r_coefficient_np(a, b):
+    a_avg = np.mean(a)
+    b_avg = np.mean(b)
+    numerator = np.sum((a-a_avg)*(b-b_avg))
+    denominator = np.sqrt(np.sum(np.square(a-a_avg))*np.sum(np.square(b-b_avg)))
+
+    return numerator/denominator
 
 def MSE(a, b):
     """

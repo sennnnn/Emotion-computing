@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow.layers as layers
 
-from model_2D_block import *
+from .model_2D_block import *
 
 def res50(input, last_channel, initial_channel=64, rate=0.5, top=True):
     """
@@ -151,7 +151,7 @@ def VGG16_stacked(input, initial_channel=64, rate=0.5):
 
     return out
 
-def construct_network(input, model, initial_channel=64, rate=0.1):
+def construct_network_strategy_1(input, model, initial_channel=64, rate=0.5):
     """
     deperacted
     This way can't let the variable share easy.
@@ -164,11 +164,11 @@ def construct_network(input, model, initial_channel=64, rate=0.1):
         None
     """
     with tf.variable_scope('network'):
-        predict = model(input, initial_channel=initial_channel, rate=rate)
+        predict = model(input, 1024, initial_channel=initial_channel, rate=rate)
     
     predict = layers.dense(predict, 512, use_bias=True)
     predict = layers.dense(predict, 512, use_bias=True)
-    predict = layers.dense(predict, 1, use_bias=True, name='regression_layer')
+    predict = layers.dense(predict, 2, use_bias=True, name='regression_layer')
     predict = tf.identity(predict, name='predict')
 
 def VGG16_LSTM(input, rnn_units,  RNN_layer=1):
@@ -181,13 +181,14 @@ def VGG16_LSTM(input, rnn_units,  RNN_layer=1):
     Return:
         input:the network output.
     """
+    input = 
     LSTM_cell = tf.nn.rnn_cell.BasicLSTMCell(rnn_units)
     LSTM_cell = tf.nn.rnn_cell.MultiRNNCell([LSTM_cell]*RNN_layer)
     out,state = tf.nn.dynamic_rnn(LSTM_cell, input, dtype=tf.float32)
     
     predict = layers.dense(predict, 512, use_bias=True)
     predict = layers.dense(predict, 512, use_bias=True)
-    predict = layers.dense(predict, 1, use_bias=True, name='regression_layer')
+    predict = layers.dense(predict, 2, use_bias=True, name='regression_layer')
     predict = tf.identity(predict, name='predict')
 
     return predict

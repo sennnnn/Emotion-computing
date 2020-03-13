@@ -2,12 +2,13 @@ import os
 import tensorflow as tf
 
 from util.util import iflarger,ifsmaller,get_newest,dict_save,dict_load
-from model.model_old import construct_network,res50
+from model.model_2D import construct_network_strategy_1
 from model.model_util import frozen_graph,restore_from_pb,load_graph
-from util.loss_metric import MSE,r_coefficient
+from util.loss_metric import MSE,r_coefficient,MSE_np,r_coefficient_np
 
+import cv2
 class train(object):
-    def __init__(self, last, pattern, model_function, pb_path, ckpt_path, initial_channel):
+    def __init__(self, last, pattern, model_function, pb_path, ckpt_path, initial_channel, strategy):
         self.graph = tf.Graph()
         self.last_flag = last
         self.pattern = pattern
@@ -15,7 +16,9 @@ class train(object):
         self.ckpt_path = ckpt_path
         self.model = model_function
         self.initial_channel = initial_channel
-        self.valid_log_metric_only_path = 'build/valid_metric_loss_only.log'
+        self.strategy = strategy
+        self.valid_log_metric_only_path = '{}/build/valid_metric_loss_only.log'.format(strategy)
+        self.detail_log_path = '{}/build/valid_detail.log'.format(strategy)
 
     def _train_graph_compose(self):
         if(self.pattern != "ckpt" and self.pattern != "pb"):
@@ -25,9 +28,10 @@ class train(object):
             with self.graph.as_default() as g:
                 # network input & output
                 x = tf.placeholder(tf.float32, [None, 448, 448, 3], name='data')
-                y = tf.placeholder(tf.float32, [None, 1], name='label')
+                y = tf.placeholder(tf.float32, [None, 2], name='label')
                 keep_prob = tf.placeholder(tf.float32, name='rate')
-                construct_network(x, self.model, self.initial_channel, keep_prob)
+                if(self.strategy == 'frame-base'):
+                    construct_network_strategy_1(x, self.model, self.initial_channel, keep_prob)
 
                 # learning rate relating things
                 lr_input = tf.placeholder(tf.float32, name='lr_input')
@@ -41,9 +45,9 @@ class train(object):
                 # loss & metric & optimizer
                 predict = g.get_tensor_by_name('predict:0')
                 
-                loss = tf.losses.mean_squared_error(y, predict)
+                loss = tf.losses.absolute_difference(y, predict)
                 loss_identity = tf.identity(loss, name='loss')
-                metric = r_coefficient(y, predict)
+                metric = tf.losses.mean_squared_error(y, predict)
                 metric_identity = tf.identity(metric, name='metric')
 
                 self.loss = loss
@@ -91,10 +95,10 @@ class train(object):
     
     def _log_write(self, show_string=None, end=False):
         if(show_string == None):
-            if not os.path.exists("build/valid_detail.log"):
-                self.log_file = open("build/valid_detail.log", "w")
+            if not os.path.exists(self.detail_log_path):
+                self.log_file = open(self.detail_log_path, "w")
             else:
-                self.log_file = open("build/valid_detail.log", "a")
+                self.log_file = open(self.detail_log_path, "a")
         else:
             print(show_string)
             self.log_file.write(show_string + '\n')
@@ -180,7 +184,7 @@ class train(object):
                     # 三个输入，拿 T1 的作为标签
                     _ = sess.run(self.optimizer, feed_dict=feed_dict)
                     if((j+1)%valid_step == 0):
-                        pic,va = next(epochwise_train_generator)
+                        pic,va = next(epochwise_valid_generator)
                         feed_dict = {'data:0':pic, 'label:0':va, 'rate:0':keep_prob}
                         los,met = sess.run([self.loss, self.metric], feed_dict=feed_dict)
                         # 保存每次 valid 的指标
@@ -199,7 +203,7 @@ epoch_end epoch:{} epoch_avg_loss:{} epoch_avg_metric:{}\n"\
                 .format(i+1, one_epoch_avg_loss, one_epoch_avg_metric)
 
                 # 以 metric 为基准，作为学习率衰减的参考指标
-                if(not iflarger(saved_valid_log_epochwise["metric"], one_epoch_avg_metric)):
+                if(not ifsmaller(saved_valid_log_epochwise["metric"], one_epoch_avg_metric)):
                     learning_rate_descent_flag += 1
                 
                 show_string += "learning_rate_descent_flag:{}\n".format(learning_rate_descent_flag)
@@ -211,7 +215,7 @@ epoch_end epoch:{} epoch_avg_loss:{} epoch_avg_metric:{}\n"\
                     show_string += "learning rate decay from {} to {}\n".format(learning_rate_once, learning_rate)
                     learning_rate_descent_flag = 0
 
-                if(iflarger(saved_valid_log_epochwise["metric"], one_epoch_avg_metric)):
+                if(ifsmaller(saved_valid_log_epochwise["metric"], one_epoch_avg_metric)):
                     show_string += "ckpt_model_save because of {}<={}\n"\
                                     .format(saved_valid_log_epochwise["metric"][-1], one_epoch_avg_metric)
                     show_string += self._model_save(sess, saver, i+1, self.pattern, one_epoch_avg_metric)
