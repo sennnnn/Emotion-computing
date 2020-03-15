@@ -84,11 +84,21 @@ def bottle_resB(input, filters):
     Return:
         input:tensor that has been operated.
     """
-    raw=input
+    raw = input
     input = CBR(input, filters//4, kernel_size=1)
     input = CBR(input, filters//4, kernel_size=3)
     input = CB(input, filters, kernel_size=1)
     input = input + raw
+    input = tf.nn.leaky_relu(input, alpha=LEAKY_RELU, name='ac')
+
+    return input
+
+def bottle_neck_downS(input, filters):
+    shortcut = CB(input, filters, strides=2)
+    input = CBR(input, filters//4, strides=2, kernel_size=1)
+    input = CBR(input, filters//4, kernel_size=3)
+    input = CB(input, filters, kernel_size=1)
+    input = input + shortcut
     input = tf.nn.leaky_relu(input, alpha=LEAKY_RELU, name='ac')
 
     return input

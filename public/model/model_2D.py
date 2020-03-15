@@ -3,7 +3,7 @@ import tensorflow.layers as layers
 
 from model_2D_block import *
 
-def res50(input, last_channel, initial_channel=64, rate=0.5, top=True):
+def res50(input, last_channel, initial_channel=256, rate=0.5, top=True):
     """
     resnet 50 network architecture
     backbone
@@ -18,30 +18,31 @@ def res50(input, last_channel, initial_channel=64, rate=0.5, top=True):
     c = initial_channel
     # conv1
     input = CBR(input, c, strides=2, kernel_size=7)
+    input = downS(input, 3, 'max')
 
     # conv2
     c = c*1
-    input = downS(input, 1, 'max')
-    for i in range(3):
-        input = bottleB(input, c)
+    input = bottle_neck_downS(input, c)
+    for i in range(2):
+        input = bottle_resB(input, c)
 
     # conv3
     c = c*2
-    input = downS(input, 1, 'con', c)
-    for i in range(4):
-        input = bottleB(input, c)
+    input = bottle_neck_downS(input, c)
+    for i in range(3):
+        input = bottle_resB(input, c)
 
     # conv4
     c = c*2
-    input = downS(input, 1, 'con', c)
-    for i in range(6):
-        input = bottleB(input, c)
+    input = bottle_neck_downS(input, c)
+    for i in range(5):
+        input = bottle_resB(input, c)
 
     # conv5
     c = c*2
-    input = downS(input, 1, 'con', c)
-    for i in range(3):
-        input = bottleB(input, c)
+    input = bottle_neck_downS(input, c)
+    for i in range(2):
+        input = bottle_resB(input, c)
 
     if(top):
         input = output_layer(input, rate, last_channel)
@@ -84,11 +85,9 @@ def VGG16(input, last_channel, initial_channel=64, rate=0.5, top=True):
     for i in range(2):
         input = CBR(input, c, kernel_size=3)
     input = CBR(input, c, kernel_size=1)
-    
+
     if(top):
         input = output_layer(input, rate, last_channel)
-    
-    input = tf.identity(input, name='output')
 
     return input
 
@@ -139,7 +138,8 @@ def output_layer(input, rate, output_units):
     """
     input = layers.average_pooling2d(input, pool_size=7, strides=7, padding='same')
     input = layers.flatten(input)
-    input = layers.dense(input, output_units, activation=None, use_bias=True)
+    input = layers.dense(input, output_units, use_bias=True, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.1))
+    input = tf.nn.leaky_relu(input, alpha=LEAKY_RELU, name='ac')
     input = tf.nn.dropout(input, rate)
 
     return input
@@ -154,35 +154,15 @@ def VGG16_stacked(input, last_channel, initial_channel=64, rate=0.5, reuse=True)
     for single in input_list:
         if(reuse == True):
             with tf.variable_scope('VGG16', reuse=reuse):
-                out.append(VGG16(single, last_channel, top=True))
+                out.append(VGG16(single, last_channel, rate=rate, top=True))
         else:
-            out.append(VGG16(single, last_channel, top=True))
+            out.append(VGG16(single, last_channel, rate=rate, top=True))
 
     out = tf.stack(out, axis=1)
 
     return out
 
-def construct_network(input, model, initial_channel=64, rate=0.1):
-    """
-    deperacted
-    This way can't let the variable share easy.
-    regression layer
-    Args:
-        input:the picture that wait to be processed.
-        model:the neural network model.
-        rate:the last layer dropout rate of the neural network model.
-    Return:
-        None
-    """
-    with tf.variable_scope('network'):
-        predict = model(input, initial_channel=initial_channel, rate=rate)
-    
-    predict = layers.dense(predict, 512, use_bias=True)
-    predict = layers.dense(predict, 512, use_bias=True)
-    predict = layers.dense(predict, 1, use_bias=True, name='regression_layer')
-    predict = tf.identity(predict, name='predict')
-
-def VGG16_LSTM(input, rnn_units,  RNN_layer=1):
+def VGG16_LSTM(input, rnn_units=1024,  RNN_layer=1, rate=0.5):
     """
     stacked VGG16 cascade LSTM Cell.
     input must shape as [batch_size, sequence time length, state length(RNN unit size)]
@@ -192,20 +172,31 @@ def VGG16_LSTM(input, rnn_units,  RNN_layer=1):
     Return:
         input:the network output.
     """
-    input = VGG16_stacked(input, rnn_units)
+    input = VGG16_stacked(input, rnn_units, rate=rate)
     LSTM_cell = tf.nn.rnn_cell.BasicLSTMCell(rnn_units)
     LSTM_cell = tf.nn.rnn_cell.MultiRNNCell([LSTM_cell]*RNN_layer)
     predict,state = tf.nn.dynamic_rnn(LSTM_cell, input, dtype=tf.float32)
 
     predict = layers.dense(predict, 512, use_bias=True)
     predict = layers.dense(predict, 512, use_bias=True)
-    predict = layers.dense(predict, 1, use_bias=True, name='regression_layer')
+    predict = layers.dense(predict, 2, use_bias=True, name='regression_layer')
     predict = tf.identity(predict, name='predict')
 
     return predict
 
 if __name__ == "__main__":
     # test region
+    import sys
+    sys.path.append('..')
+    from model_util import frozen_graph
+    input = tf.placeholder(tf.float32, [None, 224, 224, 3])
+    out = res50(input, 1000)
+    out = tf.identity(out, name='predict')
+    init = tf.global_variables_initializer()
+    with tf.Session() as sess:
+        sess.run(init)
+        frozen_graph(sess, '1.pb')
+
     # examples for share VGG16-LSTM
     # input = tf.placeholder(tf.float32, [None, 12, 224, 224, 3])
 
@@ -223,10 +214,11 @@ if __name__ == "__main__":
     # 如果使用 reuse=True 这种方法，那么想要 reuse=True 这种方式，必须要第一次
     # 先定义了 variable 之后才能在第二次调用 variable 的时候开启 reuse=True
     # input = tf.placeholder(tf.float32, [None, 224, 224, 3])
+    # out1 = VGG16(input, 1024)
     # v1 = None
     # v2 = None
     # with tf.variable_scope('VGG16'):
-    #     out1 = VGG16(input, 2048)
+        # out1 = VGG16(input, 2048)
     #     vas = tf.global_variables()
     #     v1 = vas[-2]    
 

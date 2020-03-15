@@ -13,8 +13,12 @@ __pycache__/
 
 # global
 try.py
-*.zip
+*.zip*
 
 # local
 dataset/trainval.txt
 dataset/test.txt
+
+# 老师那我整理一下我大概要干啥哈：
+# 1. MR 训练获得可比较的模型，Attention Unet,Unet++,R2Unet,MultiRes net 四选二
+# 2. cstro 的

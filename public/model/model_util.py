@@ -46,9 +46,9 @@ def load_graph(graph_def_filename):
         graph_def.ParseFromString(f.read())
 
     with tf.Graph().as_default() as graph:
-        tf.import_graph_def(graph_def, name="")
+        tf.import_graph_def(graph_def, name='')
 
-    print("load graph {} ...".format(graph_def_filename))
+    print('load graph {} ...'.format(graph_def_filename))
 
     return graph
 
@@ -64,9 +64,9 @@ def frozen_graph(sess, output_graph_path):
     # 因为计算图上只有ops没有变量，所以要通过会话，来获取那些变量
     output_graph_def = tf.graph_util.convert_variables_to_constants(sess, 
                                                                    tf.get_default_graph().as_graph_def(),
-                                                                   ["predict"])
+                                                                   ['predict'])
 
-    with open(output_graph_path, "wb") as f:
+    with open(output_graph_path, 'wb') as f:
         f.write(output_graph_def.SerializeToString())
 
-    return "{} ops written to {}.\n".format(len(output_graph_def.node), output_graph_path)
+    return '{} ops written to {}.\n'.format(len(output_graph_def.node), output_graph_path)

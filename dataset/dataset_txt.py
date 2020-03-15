@@ -1,6 +1,6 @@
 import os
 
-task = 'trainval'
+task = 'test'
 
 task_list = os.listdir(task)
 
@@ -15,6 +15,6 @@ for one in task_list:
         if item not in train_list: train_list.append(item)
         else: continue
         item_path = os.path.join(one_video_path, item)
-        f.write('{}/{}\n'.format('dataset', item_path))
+        f.write('{}/{}\n'.format('../dataset', item_path))
 
         

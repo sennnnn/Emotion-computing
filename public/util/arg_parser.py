@@ -1,5 +1,49 @@
 import sys
 
+def args_process():
+
+    ret_dict = {}
+
+    a = arg_parser()
+
+    a.add_val('--task', 'train')
+
+    model_pattern_dict = {'ckpt':'ckpt', 'pb':'pb'}
+
+    a.add_map('--pattern', model_pattern_dict)
+
+    target_dict = {'v':'valence', 'a':'arousal'}
+
+    a.add_map('--target', target_dict)
+
+    parse_dict = a()
+
+    training_metric_loss_only_log_path = os.path.join(parse_dict['--target'], 'build', 'valid_metric_loss_only.log')
+    start_epoch = 1
+    if(not os.path.exists(training_metric_loss_only_log_path)):
+        last = False
+        dir_path = os.path.dirname(training_metric_loss_only_log_path)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path, 0x777)
+    else:
+        try:
+            temp_dict = dict_load(training_metric_loss_only_log_path)
+            start_epoch = len(temp_dict['epochwise']['metric']) + 1
+            if(start_epoch == 0):
+                last = False
+            else:
+                last = True
+        except:
+            last = False
+
+    ret_dict['target'] = parse_dict['--target']
+    ret_dict['task'] = parse_dict['--task']
+    ret_dict['model_pattern'] = parse_dict['--pattern'] if('--pattern' in parse_dict.keys()) else None
+    ret_dict['last'] = last
+    ret_dict['start_epoch'] = start_epoch
+
+    return ret_dict
+
 class arg_parser(object):
     args_dict = {}
     key_list = []
