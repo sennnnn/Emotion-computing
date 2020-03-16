@@ -94,6 +94,14 @@ def bottle_resB(input, filters):
     return input
 
 def bottle_neck_downS(input, filters):
+    """
+    The res50 downsampling block.
+    Args:
+        input:tensor that need to be operated.
+        filters:the benchmark of the channel number.
+    Return:
+        input:tensor that has been operated.
+    """
     shortcut = CB(input, filters, strides=2)
     input = CBR(input, filters//4, strides=2, kernel_size=1)
     input = CBR(input, filters//4, kernel_size=3)

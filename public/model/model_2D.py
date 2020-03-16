@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow.layers as layers
 
-from model_2D_block import *
+from .model_2D_block import *
 
 def res50(input, last_channel, initial_channel=256, rate=0.5, top=True):
     """

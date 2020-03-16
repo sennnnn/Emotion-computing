@@ -1,10 +1,13 @@
+import sys
+sys.path.append('..')
+
 import os
 import tensorflow as tf
 import tensorflow.layers as layers
 
-from util.util import iflarger,ifsmaller,get_newest,dict_save,dict_load
-from model.model_util import frozen_graph,restore_from_pb,load_graph
-from util.loss_metric import MSE,r_coefficient,MSE_np,r_coefficient_np
+from public.util.util import iflarger,ifsmaller,get_newest,dict_save,dict_load
+from public.model.model_util import frozen_graph,restore_from_pb,load_graph
+from public.util.loss_metric import MSE,r_coefficient,MSE_np,r_coefficient_np
 
 def construct_network(input, model, initial_channel=64, rate=0.5):
     """
@@ -27,7 +30,7 @@ def construct_network(input, model, initial_channel=64, rate=0.5):
     predict = tf.identity(predict, name='predict')
 
 class train(object):
-    def __init__(self, last, pattern, model_function, pb_path, ckpt_path, target, initial_channel, input_shape):
+    def __init__(self, last, pattern, model_function, pb_path, ckpt_path,target, initial_channel, input_shape):
         self.graph = tf.Graph()
         self.last_flag = last
         self.pattern = pattern
@@ -35,7 +38,6 @@ class train(object):
         self.ckpt_path = ckpt_path
         self.model = model_function
         self.initial_channel = initial_channel
-        self.target = target
         self.valid_log_metric_only_path = '{}/build/valid_metric_loss_only.log'.format(target)
         self.detail_log_path = '{}/build/valid_detail.log'.format(target)
         self.input_shape = input_shape

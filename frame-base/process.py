@@ -1,11 +1,14 @@
+import sys
+sys.path.append('..')
+
 import os
 import re
 import cv2
 import random
 import numpy as np
 
-from util.arg_parser import arg_parser
-from util.util import dict_load
+from public.util.arg_parser import arg_parser
+from public.util.util import dict_load
 
 def z_score(pic, smooth=0.000001):
     """
@@ -37,11 +40,11 @@ def parse_va(txt_path):
         return va
 
 class test_generator():
-    def __init__(self, test_list, input_shape, batch_size):
+    def __init__(self, test_list, input_shape, batch_size, target='valence'):
         self.test_list = test_list
         self.input_shape = input_shape
         self.batch_size = batch_size
-        self.target = v_or_a
+        self.target = target
 
     def videowise_split(self):
         self.videowise_path_list = {}
@@ -65,9 +68,9 @@ class test_generator():
             pic = cv2.imread(pic_path)
             pic = slice_process(pic, self.input_shape)
             va = parse_va(txt_path)
-            if(v_or_a == 'v'):
+            if(self.target == 'valence'):
                 va = [va[0]]
-            elif(v_or_a == 'a'):
+            elif(self.target == 'arousal'):
                 va = [va[1]]
             else:
                 assert False,'target selection flag must be v or a.'
@@ -93,9 +96,9 @@ class test_generator():
             pic = cv2.imread(pic_path)
             pic = slice_process(pic, self.input_shape)
             va = parse_va(txt_path)
-            if(v_or_a == 'v'):
+            if(self.target == 'valence'):
                 va = [va[0]]
-            elif(v_or_a == 'a'):
+            elif(self.target == 'arousal'):
                 va = [va[1]]
             else:
                 assert False,'target selection flag must be v or a.'
@@ -115,13 +118,13 @@ class test_generator():
             yield from self.__iter__()
 
 class train_valid_generator():
-    def __init__(self, train_list, input_shape, batch_size, ifrandom=True, v_or_a='v'):
+    def __init__(self, train_list, input_shape, batch_size, ifrandom=True, target='valence'):
         self.train_list = train_list
         self.input_shape = input_shape
         self.batch_size = batch_size
         self.ifrandom = ifrandom
         self.count = len(train_list)
-        self.target = v_or_a
+        self.target = target
     
     def __iter__(self):
         if(self.ifrandom):
@@ -137,9 +140,9 @@ class train_valid_generator():
             pic = cv2.imread(pic_path)
             pic = slice_process(pic, self.input_shape)
             va = parse_va(txt_path)
-            if(v_or_a == 'v'):
+            if(self.target == 'valence'):
                 va = [va[0]]
-            elif(v_or_a == 'a'):
+            elif(self.target == 'arousal'):
                 va = [va[1]]
             else:
                 assert False,'target selection flag must be v or a.'

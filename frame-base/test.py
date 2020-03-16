@@ -1,11 +1,14 @@
+import sys
+sys.path.append('..')
+
 import os
 import cv2
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from util.loss_metric import MSE_np,r_coefficient_np,MSE,r_coefficient
 from process import slice_process,parse_va
+from public.util.loss_metric import MSE_np,r_coefficient_np,MSE,r_coefficient
 
 class test(object):
     def __init__(self, graph, rate, tf_config):
