@@ -10,10 +10,12 @@ build/
 /dataset/test/
 
 # file
+# ~ 开头的是烦人的 office 暂时文件。
 
 # global
 try.py
 *.zip*
+~*
 
 # local
 dataset/trainval.txt
