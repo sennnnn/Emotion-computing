@@ -145,24 +145,27 @@ def output_layer(input, rate, output_units):
     return input
 
 def VGG16_stacked(input, last_channel, initial_channel=64, rate=0.5, reuse=True):
-    if(reuse == True):
+    if(reuse):
         reuse = tf.AUTO_REUSE
     else:
         reuse = False
     out = []
     input_list = tf.unstack(input, axis=1)
+    index = 0
     for single in input_list:
-        if(reuse == True):
+        if(index == 0):
+            with tf.variable_scope('VGG16', reuse=False):
+                out.append(VGG16(single, last_channel, rate=rate, top=True))
+            index += 1
+        else:
             with tf.variable_scope('VGG16', reuse=reuse):
                 out.append(VGG16(single, last_channel, rate=rate, top=True))
-        else:
-            out.append(VGG16(single, last_channel, rate=rate, top=True))
 
     out = tf.stack(out, axis=1)
 
     return out
 
-def VGG16_LSTM(input, rnn_units=1024,  RNN_layer=1, rate=0.5):
+def VGG16_LSTM(input, rnn_units=1024, initial_channel=64, rate=0.5, RNN_layer=1):
     """
     stacked VGG16 cascade LSTM Cell.
     input must shape as [batch_size, sequence time length, state length(RNN unit size)]
@@ -172,84 +175,9 @@ def VGG16_LSTM(input, rnn_units=1024,  RNN_layer=1, rate=0.5):
     Return:
         input:the network output.
     """
-    input = VGG16_stacked(input, rnn_units, rate=rate)
+    input = VGG16_stacked(input, rnn_units, initial_channel=initial_channel, rate=rate)
     LSTM_cell = tf.nn.rnn_cell.BasicLSTMCell(rnn_units)
     LSTM_cell = tf.nn.rnn_cell.MultiRNNCell([LSTM_cell]*RNN_layer)
     predict,state = tf.nn.dynamic_rnn(LSTM_cell, input, dtype=tf.float32)
 
-    predict = layers.dense(predict, 512, use_bias=True)
-    predict = layers.dense(predict, 512, use_bias=True)
-    predict = layers.dense(predict, 2, use_bias=True, name='regression_layer')
-    predict = tf.identity(predict, name='predict')
-
     return predict
-
-if __name__ == "__main__":
-    # test region
-    import sys
-    sys.path.append('..')
-    from model_util import frozen_graph
-    input = tf.placeholder(tf.float32, [None, 224, 224, 3])
-    out = res50(input, 1000)
-    out = tf.identity(out, name='predict')
-    init = tf.global_variables_initializer()
-    with tf.Session() as sess:
-        sess.run(init)
-        frozen_graph(sess, '1.pb')
-
-    # examples for share VGG16-LSTM
-    # input = tf.placeholder(tf.float32, [None, 12, 224, 224, 3])
-
-    # input = VGG16_LSTM(input, 2048)
-    # print(input)
-
-    # examples for share stacked VGG16
-    # input = tf.placeholder(tf.float32, [None, 12, 224, 224, 3])
-    # with tf.variable_scope('network'):
-    #     input = VGG16_stacked(input, 2048, reuse=False)
-    
-    # print(len(tf.global_variables()))
-
-    # examples about how to share the weights.
-    # 如果使用 reuse=True 这种方法，那么想要 reuse=True 这种方式，必须要第一次
-    # 先定义了 variable 之后才能在第二次调用 variable 的时候开启 reuse=True
-    # input = tf.placeholder(tf.float32, [None, 224, 224, 3])
-    # out1 = VGG16(input, 1024)
-    # v1 = None
-    # v2 = None
-    # with tf.variable_scope('VGG16'):
-        # out1 = VGG16(input, 2048)
-    #     vas = tf.global_variables()
-    #     v1 = vas[-2]    
-
-    # with tf.variable_scope('VGG16', reuse=True):
-    #     out2 = VGG16(input, 2048)
-    #     vas = tf.global_variables()
-    #     v2 = vas[-2]
-
-    # init = tf.global_variables_initializer()
-    # with tf.Session() as sess:
-    #     sess.run(init)
-    #     v1,v2 = sess.run([v1, v2])
-    #     print(v1[200:208, 99], v2[200:208, 99])
-
-    # 而直接使用 reuse=tf.AUTO_REUSE 则不需要先定义一次这么麻烦。
-    # input = tf.placeholder(tf.float32, [None, 224, 224, 3])
-    # v1 = None
-    # v2 = None
-    # with tf.variable_scope('VGG16', reuse=tf.AUTO_REUSE):
-    #     out1 = VGG16(input, 2048)
-    #     vas = tf.global_variables()
-    #     v1 = vas[-2]    
-
-    # with tf.variable_scope('VGG16', reuse=tf.AUTO_REUSE):
-    #     out2 = VGG16(input, 2048)
-    #     vas = tf.global_variables()
-    #     v2 = vas[-2]
-
-    # init = tf.global_variables_initializer()
-    # with tf.Session() as sess:
-    #     sess.run(init)
-    #     v1,v2 = sess.run([v1, v2])
-    #     print(v1[200:208, 99], v2[200:208, 99])
-    pass

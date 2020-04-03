@@ -50,7 +50,7 @@ if(ret_dict['task'] == 'train'):
 elif(ret_dict['task'] == 'test'):
     
     strategy = ret_dict['strategy']
-    input_shape = (448, 448)
+    input_shape = (224, 224)
     batch_size = 4
     keep_prob = 0.5
 
